@@ -1,82 +1,75 @@
-# KokaVi Insights
+# kokavi-insights
 
-I built this to answer a question I kept asking while applying for jobs: how well does my resume actually match this job description, and what am I missing?
+A small API that compares a resume with a job description. It finds the job's real requirements, checks which ones the resume shows, and suggests what to improve.
 
-You paste in a resume and a job description. It gives back a match score, a list of keywords the job asks for that your resume doesn't mention, and a few plain-English suggestions on how to deal with the gaps.
+**Live API:** https://kokavi-insights.onrender.com (interactive docs at `/docs`)
 
-It's also my first real Python project. I come from a teaching and research background and have mostly built in JavaScript and React, so I wanted a Python project that did something useful rather than another calculator.
+It is used by the Match Checker in my [Job Application Tracker](https://job-tracker-frontend-heqb.onrender.com).
 
-## What you get back
+## How it works
 
-- **A match score.** I use TF-IDF and cosine similarity from scikit-learn. 0 means nothing in common, 100 means identical text.
-- **Missing keywords.** Words that show up in the job description but nowhere in the resume.
-- **Suggestions from an LLM.** For the missing keywords, `gpt-4o-mini` explains why they matter for the role and how you could mention related experience, if you really have it. I told it not to make anything up, because a tool that invents qualifications isn't helping anyone.
+1. **Read the job.** An AI model (OpenAI gpt-4o-mini) lists up to 20 concrete requirements from the job description: skills, tools, qualifications and responsibilities. Each is marked "must" or "nice". Company names, benefits and legal text are ignored.
+2. **Check the resume.** For each requirement, the model must quote the line in the resume that shows it. If the quote is not really in the resume, it does not count. This stops the AI from inventing matches.
+3. **Score.** The score is the share of requirements the resume covers, with "must" items counting double.
+4. **Suggest.** The missing requirements are sent to the model again to explain why they matter and how to show relevant experience.
+5. **Fallback.** If the AI step fails, the API falls back to a simple keyword-similarity (TF-IDF) score so it still returns a result.
 
-## Quick example
+## API
+
+`POST /match`
 
 Request:
+```json
+{ "resume_text": "...", "job_description": "..." }
+```
 
+Response:
 ```json
 {
-  "resume_text": "Experienced React and Node.js developer with PostgreSQL background",
-  "job_description": "Looking for a React developer with Docker, Kubernetes, and AWS experience"
+  "match_score_percent": 53.33,
+  "missing_keywords": ["Python programming", "..."],
+  "matched_keywords": ["..."],
+  "keyword_similarity_percent": 18.51,
+  "ai_suggestions": "..."
 }
 ```
 
-Response (suggestions shortened):
+`GET /` returns a simple hello message.
 
-```json
-{
-  "match_score_percent": 12.74,
-  "missing_keywords": ["aws", "docker", "kubernetes"],
-  "ai_suggestions": "- These three tools are central to the role... - If you've used any of them, even on a team project, say so..."
-}
-```
+## Tech
 
-The score is low because the only shared word is "React", which is the right result for that pair.
+Python, FastAPI, scikit-learn (TF-IDF and cosine similarity), OpenAI API, deployed on Render.
 
-## Running it yourself
-
-You'll need Python 3 and an OpenAI API key.
+## Run locally
 
 ```bash
-git clone https://github.com/komalramani/kokavi-insights.git
-cd kokavi-insights
-python3 -m venv venv
+python -m venv venv
 source venv/bin/activate
-pip install fastapi uvicorn scikit-learn openai python-dotenv
+pip install -r requirements.txt
 ```
 
-Make a file called `.env` in the project folder:
-
+Create a `.env` file with your key (never commit it):
 ```
-OPENAI_API_KEY=your_key_here
+OPENAI_API_KEY=your-key-here
 ```
 
-It's in `.gitignore`, so it won't get committed. Then start the server:
-
+Start the server:
 ```bash
 uvicorn main:app --reload
 ```
 
-Open http://127.0.0.1:8000/docs and you can try `POST /match` from the Swagger page without writing any code.
+Then open http://127.0.0.1:8000/docs.
 
-## Things worth knowing
+## Known limitations
 
-- TF-IDF only matches exact words. "JS" and "JavaScript" count as different terms, and it has no idea about synonyms. Treat the score as a rough signal, not a verdict.
-- With only two documents, the word weighting is crude. A real version would be tuned on many job descriptions.
-- Each request makes one OpenAI call, which costs a fraction of a cent on `gpt-4o-mini`.
-- I added a few custom stop words ("experience", "looking", "role", "years") because job postings are full of them and they showed up as fake "missing keywords".
+- The score is an estimate. The AI can pick a slightly different set of requirements each run, so the score can vary between runs. The missing list and suggestions are more useful than the exact percentage.
+- The quote check is strict, so a real match can sometimes be counted as missing.
+- Each check makes two AI calls, so it takes about 10 to 20 seconds.
+- It runs on Render's free tier. After 15 minutes idle it goes to sleep, so the first request can take 30 to 60 seconds.
+- It only reads pasted text, not uploaded PDF or Word files.
 
-## What I'm doing next
+## Ideas for next
 
-- Add a "Check Match" button to my [Job Application Tracker](https://github.com/komalramani/job-tracker)
-- Deploy this to Render
-- Add a `requirements.txt` and some tests
-- Try embeddings instead of TF-IDF so synonyms count
-
-## Built with
-
-Python, FastAPI, Pydantic, scikit-learn, the OpenAI API, python-dotenv.
-
-Komal Ramani
+- Make the quote check more forgiving and the score steadier.
+- Show matched requirements in the tracker UI.
+- Accept resume file uploads.
