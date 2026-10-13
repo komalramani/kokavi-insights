@@ -12,7 +12,11 @@ from openai import OpenAI
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-app = FastAPI()
+app = FastAPI(
+    title="Kokavi Insights",
+    description="AI resume-to-job matching API: extracts a job's requirements, checks the resume against each with quoted evidence, and returns a weighted match score, missing skills and suggestions.",
+    version="1.0.0",
+)
 
 app.add_middleware(
     CORSMiddleware,
