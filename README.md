@@ -2,7 +2,7 @@
 
 A small API that compares a resume with a job description. It finds the job's real requirements, checks which ones the resume shows, and suggests what to improve.
 
-**Live API:** https://kokavi-insights.onrender.com (interactive docs at `/docs`)
+**Live API:** https://kokavi-insights.onrender.com (interactive docs at `/docs`; the first request may take up to a minute while the free server wakes)
 
 It is used by the Match Checker in my [Job Application Tracker](https://job-tracker-frontend-heqb.onrender.com).
 
@@ -34,7 +34,7 @@ Response:
 }
 ```
 
-`GET /` returns a simple hello message.
+`GET /` redirects to the interactive API docs (`/docs`).
 
 ## Tech
 
