@@ -1,3 +1,4 @@
+from fastapi.responses import RedirectResponse
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -30,9 +31,9 @@ custom_stop_words = list(ENGLISH_STOP_WORDS) + [
     "required", "requirements", "responsibilities", "including", "new",
     "ambitious", "ambiguous", "world", "age", "apply", "applied",
 ]
-@app.get("/")
+@app.get("/", include_in_schema=False)
 def read_root():
-    return {"message": "Hello from Kokavi Insights"}
+    return RedirectResponse(url="/docs")
 
 class MatchRequest(BaseModel):
     resume_text: str
