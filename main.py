@@ -1,3 +1,4 @@
+import re
 from fastapi.responses import RedirectResponse
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -86,6 +87,23 @@ Job description:
     )
     return json.loads(response.choices[0].message.content)["requirements"]
 
+GENERIC_LABELS = {"skills", "technical skills", "experience", "projects", "education", "summary"}
+
+
+def normalize_text(text):
+    """Lowercase and strip punctuation so quotes compare reliably."""
+    text = re.sub(r"[^a-z0-9+#\s]", " ", (text or "").lower())
+    return " ".join(text.split())
+
+
+def evidence_supported(evidence, resume_norm):
+    """True only if the AI's quote really comes from the resume.
+    A quote may be pieces joined by ':' ',' ';' '...' or line breaks,
+    so every piece must appear in the resume."""
+    pieces = re.split(r"[:;,|\n…]|\.\.\.", evidence or "")
+    pieces = [normalize_text(p) for p in pieces]
+    pieces = [p for p in pieces if p and p not in GENERIC_LABELS]
+    return bool(pieces) and all(p in resume_norm for p in pieces)
 
 @app.post("/match")
 def match_resume(data: MatchRequest):
@@ -109,14 +127,13 @@ def match_resume(data: MatchRequest):
 
     try:
         requirements = analyze_requirements(data.resume_text, data.job_description)
-        resume_norm = " ".join(data.resume_text.lower().split())
+        resume_norm = normalize_text(data.resume_text)
         weight_total = 0
         weight_matched = 0
         matched, missing = [], []
         for req in requirements:
             weight = 2 if req.get("importance") == "must" else 1
-            evidence = " ".join((req.get("evidence") or "").lower().split())
-            found = bool(evidence) and evidence in resume_norm  # reject invented quotes
+            found = evidence_supported(req.get("evidence"), resume_norm)  # reject invented quote
             weight_total += weight
             if found:
                 weight_matched += weight

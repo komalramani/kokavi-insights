@@ -115,3 +115,28 @@ def test_no_missing_keywords_skips_openai_call():
     # With nothing missing, get_ai_suggestions returns a fixed message without calling OpenAI.
     result = main.get_ai_suggestions(RESUME, JOB, [])
     assert result == "Your resume already covers the key terms in this job description well."
+
+
+
+def test_evidence_with_section_label_is_accepted(monkeypatch):
+    resume = "Skills: Python, FastAPI, REST API design, PostgreSQL."
+    reqs = [{"name": "PostgreSQL", "importance": "must", "evidence": "Skills: PostgreSQL"}]
+    monkeypatch.setattr(main, "analyze_requirements", fake_requirements(reqs))
+    monkeypatch.setattr(main, "get_ai_suggestions", lambda *a, **k: "ok")
+
+    data = client.post("/match", json={"resume_text": resume, "job_description": JOB}).json()
+
+    assert data["match_score_percent"] == 100.0
+    assert data["matched_keywords"] == ["PostgreSQL"]
+
+
+def test_evidence_naming_a_skill_not_in_resume_is_rejected(monkeypatch):
+    resume = "Skills: Python, FastAPI, REST API design, PostgreSQL."
+    reqs = [{"name": "Docker", "importance": "must", "evidence": "Skills: Docker"}]
+    monkeypatch.setattr(main, "analyze_requirements", fake_requirements(reqs))
+    monkeypatch.setattr(main, "get_ai_suggestions", lambda *a, **k: "ok")
+
+    data = client.post("/match", json={"resume_text": resume, "job_description": JOB}).json()
+
+    assert data["match_score_percent"] == 0.0
+    assert data["missing_keywords"] == ["Docker"]
