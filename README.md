@@ -63,10 +63,10 @@ Then open http://127.0.0.1:8000/docs.
 ## Known limitations
 
 - The score is an estimate. The AI can pick a slightly different set of requirements each run, so the score can vary between runs. The missing list and suggestions are more useful than the exact percentage.
-- The quote check is strict, so a real match can sometimes be counted as missing.
 - Each check makes two AI calls, so it takes about 10 to 20 seconds.
 - It runs on Render's free tier. After 15 minutes idle it goes to sleep, so the first request can take 30 to 60 seconds.
 - It only reads pasted text, not uploaded PDF or Word files.
+- The evidence check requires each part of the AI's quote to appear in the resume text, so it can occasionally reject a genuine match when the quote is reworded.
 
 ## Ideas for next
 
